@@ -1,21 +1,54 @@
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
- 
-example_sent = """This is a sample sentence,
-                  showing off the stop words filtration."""
- 
-stop_words = set(stopwords.words('english'))
- 
-word_tokens = word_tokenize(example_sent)
-# converts the words in word_tokens to lower case and then checks whether 
-#they are present in stop_words or not
-filtered_sentence = [w for w in word_tokens if not w.lower() in stop_words]
-#with no lower case conversion
-filtered_sentence = []
- 
-for w in word_tokens:
-    if w not in stop_words:
-        filtered_sentence.append(w)
- 
-print(word_tokens)
-print(filtered_sentence)
+import nltk
+from nltk import CFG, ChartParser
+
+# Define a context-free grammar for English sentences in SOV format
+english_sov_grammar = CFG.fromstring("""
+    S -> NP VP
+    NP -> Pronoun | ProperNoun | Det CommonNoun
+    VP -> Verb NP | Verb
+    Pronoun -> "I" | "you" | "he" | "she" | "it" | "we" | "they"
+    ProperNoun -> "john" | "mary" | "alice" | "bob"
+    Det -> "the" | "a"
+    CommonNoun -> "book" | "cat" | "dog" | "ball" | "pen" | "house" | "apple"
+    Verb -> "read" | "write" | "see" | "love" | "eat" | "throw" | "catch"
+""")
+
+# Function to rephrase a given English sentence into SOV format
+def rephrase_to_sov(sentence):
+    # Tokenize the sentence
+    tokens = nltk.word_tokenize(sentence.lower())  # Convert to lowercase for easier parsing
+
+    # Create a parser using the SOV grammar
+    parser = ChartParser(english_sov_grammar)
+
+    # Parse the sentence
+    try:
+        parsed_trees = parser.parse(tokens)
+        for tree in parsed_trees:
+            # Extract subject, object, and verb from the parse tree
+            subject = ""
+            object_ = ""
+            verb = ""
+            for subtree in tree.subtrees():
+                if subtree.label() == "NP":
+                    if not subject:
+                        subject = " ".join(subtree.leaves())
+                    else:
+                        if not object_:
+                            object_ = " ".join(subtree.leaves())
+                        else:
+                            object_ += " " + " ".join(subtree.leaves())
+                elif subtree.label() == "Verb":
+                    verb = " ".join(subtree.leaves())
+            # Print the input sentence and rephrased sentence in SOV format
+            print("Input sentence:", sentence)
+            print("Rephrased sentence (SOV):", subject, object_, verb)
+            break  # Only consider the first parse tree
+    except ValueError as e:
+        print("Parsing Error:", e)
+
+# User input for English sentence
+user_sentence = input("Enter an English sentence: ")
+
+# Rephrase the user-provided sentence into SOV format
+rephrase_to_sov(user_sentence)
